@@ -94,6 +94,8 @@ pip install -r requirements.txt
 
 `best_model.pth` dosyasını `assets/` klasörüne ekle.
 
+> **Model dosyasını indir:** [best_model.pth (41MB)](https://drive.google.com/file/d/15iAFTBtFB0FYFVkSjZleNtESMTi4kQtM/view?usp=sharing)
+
 ---
 
 ## Kullanım
