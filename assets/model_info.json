@@ -1,0 +1,24 @@
+{
+  "model_name": "EfficientNetB3",
+  "num_classes": 4,
+  "class_names": [
+    "3AA",
+    "3CC",
+    "4AA",
+    "Cleavage"
+  ],
+  "img_size": 300,
+  "imagenet_mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "imagenet_std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "best_val_loss": 0.7256044459342956,
+  "test_accuracy": 0.8076923076923077,
+  "confidence_threshold": 0.7
+}
