@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Analiz Sonuçları{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h2>📊 Analiz Sonuçları</h2>
+      <p>İşlem ID: <code style="font-size:0.75rem;color:var(--text-muted);">{{ batch_id }}</code></p>
+    </div>
+    <div class="flex gap-1">
+      <a href="{{ url_for('index') }}"   class="btn btn-secondary">← Yeni Analiz</a>
+      <a href="{{ url_for('export_csv') }}" class="btn btn-success btn-sm">⬇️ CSV İndir</a>
+      <a href="{{ url_for('export_json') }}" class="btn btn-secondary btn-sm">⬇️ JSON İndir</a>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  {% if summary %}
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="summary-label">Toplam Görsel</div>
+      <div class="summary-value">{{ summary.total }}</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Ortalama Güven</div>
+      <div class="summary-value">{{ "%.1f"|format(summary.avg_confidence * 100) }}%</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Uyarı Sayısı</div>
+      <div class="summary-value" style="color:{% if summary.warning_count > 0 %}var(--warning){% else %}var(--success){% endif %};">
+        {{ summary.warning_count }}
+      </div>
+    </div>
+    {% if summary.distribution %}
+      {% for cls, cnt in summary.distribution.items() %}
+      <div class="summary-card">
+        <div class="summary-label">{{ cls }}</div>
+        <div class="summary-value">{{ cnt }}</div>
+        <div class="summary-sub">görsel</div>
+      </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Results List -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">📋 Tüm Analiz Sonuçları</span>
+      <span class="text-muted fs-xs">{{ results|length }} sonuç</span>
+    </div>
+
+    {% if results %}
+    <div style="display:flex; flex-direction:column; gap:1.5rem;">
+      {% for r in results %}
+      <div style="background:rgba(0,0,0,0.2); border:1px solid var(--border); border-radius:var(--radius-md); padding:1.25rem;">
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.75rem; flex-wrap:wrap; gap:1rem;">
+          <div>
+            <span style="font-size:1.1rem; font-weight:600; color:var(--text-primary);">🔬 {{ r.filename }}</span>
+            <span class="text-muted fs-xs" style="margin-left:1rem;">Sonuç #{{ loop.index }}</span>
+          </div>
+          <div class="flex gap-1" style="align-items:center;">
+            {% if r.warning %}
+              <span class="badge badge-warning">⚠️ Düşük Güven</span>
+            {% else %}
+              <span class="badge badge-success">✅ Yüksek Güven</span>
+            {% endif %}
+            <a href="{{ url_for('result', pred_id=r.id) }}" class="btn btn-secondary btn-sm">🔍 Tüm Detaylar</a>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:1.5rem; align-items:center;">
+          <!-- Orijinal Görsel -->
+          <div style="max-width:220px;">
+            <div class="result-image-box" style="border-radius:var(--radius-sm); aspect-ratio:1;">
+              {% if r.original_b64 %}
+                <img src="data:image/png;base64,{{ r.original_b64 }}" alt="Orijinal">
+              {% else %}
+                <div class="flex-center" style="height:100%; color:var(--text-muted);"><span class="fs-xs">Görsel Yok</span></div>
+              {% endif %}
+            </div>
+            <p class="text-center text-muted fs-xs mt-1 fw-600">Orijinal</p>
+          </div>
+
+          <!-- Grad-CAM -->
+          <div style="max-width:220px;">
+            <div class="result-image-box" style="border-radius:var(--radius-sm); aspect-ratio:1;">
+              {% if r.cam_image_b64 %}
+                <img src="data:image/png;base64,{{ r.cam_image_b64 }}" alt="Grad-CAM">
+              {% else %}
+                <div class="flex-center" style="height:100%; color:var(--text-muted);"><span class="fs-xs">Grad-CAM Yok</span></div>
+              {% endif %}
+            </div>
+            <p class="text-center text-muted fs-xs mt-1 fw-600">Grad-CAM</p>
+          </div>
+
+          <!-- Prediction Info -->
+          <div>
+            <p class="fs-xs text-muted fw-600 mb-1" style="text-transform:uppercase;letter-spacing:.05em;">Tahmin</p>
+            <div style="display:inline-block;" class="prediction-badge">
+              <span style="font-size:1.2rem; padding:0.2rem;">🧬 {{ r.prediction }}</span>
+            </div>
+            
+            <p class="fs-xs text-muted fw-600 mt-2 mb-1" style="text-transform:uppercase;letter-spacing:.05em;">Güven Skoru</p>
+            <div style="display:flex;align-items:center;gap:0.5rem;max-width:240px;">
+              <div class="prob-bar-bg" style="flex:1;">
+                <div class="prob-bar-fill {{ '' if not r.warning else 'low' }}"
+                     data-width="{{ (r.confidence * 100)|round(1) }}"
+                     style="width:0%"></div>
+              </div>
+              <span class="fs-sm fw-600 text-primary">{{ "%.1f"|format(r.confidence * 100) }}%</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+      <div class="text-center" style="padding:3rem;">
+        <span style="font-size:3rem;display:block;margin-bottom:1rem;">🔬</span>
+        <p class="text-muted">Hiç sonuç bulunamadı.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Warning summary -->
+  {% set warn_count = results | selectattr('warning') | list | length %}
+  {% if warn_count > 0 %}
+  <div class="alert alert-warning mt-3">
+    <span class="alert-icon">⚠️</span>
+    <div>
+      <strong>{{ warn_count }} görsel düşük güvenilirlikle sınıflandırıldı.</strong><br>
+      Lütfen bu görsellerin Grad-CAM ısı haritalarını inceleyerek manuel değerlendirme ile doğrulama yapınız.
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  animateProbBars();
+</script>
+{% endblock %}

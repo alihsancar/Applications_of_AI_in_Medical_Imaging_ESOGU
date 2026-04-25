@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Tekli Analiz{% endblock %}
+
+{% block content %}
+<div class="container container-sm">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge">🤖 EfficientNetB3 · Gardner Skalası · Grad-CAM XAI</div>
+    <h1>
+      Embriyo Kalitesini<br>
+      <span class="gradient-text">Yapay Zeka ile Belirleyin</span>
+    </h1>
+    <p>
+      Blastosist görselinizi yükleyin — Gardner skalasına göre otomatik sınıflandırma,
+      Grad-CAM ısı haritası ve morfolojik bölge analizi saniyeler içinde hazır.
+    </p>
+  </section>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value">~80%</div>
+      <div class="stat-label">Test Doğruluğu</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">0.70</div>
+      <div class="stat-label">Güven Eşiği</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">4</div>
+      <div class="stat-label">Sınıf (Gardner)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">300px</div>
+      <div class="stat-label">Görüntü Boyutu</div>
+    </div>
+  </div>
+
+  <!-- Upload Card -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">🧬 Embriyo Görseli Yükle</span>
+      <span class="text-muted fs-xs">PNG · JPG · TIFF · BMP</span>
+    </div>
+
+    <form id="predictForm" action="{{ url_for('predict') }}" method="POST" enctype="multipart/form-data">
+
+      <!-- Drop Zone -->
+      <div class="drop-zone" id="batchDropZone" role="button"
+           aria-label="Görsel yükleme alanı" tabindex="0">
+        <input type="file" name="files" id="batchFileInput"
+               accept=".png,.jpg,.jpeg,.bmp,.tiff,.tif"
+               multiple aria-label="Bir veya daha fazla embriyo görseli seç">
+        <span class="drop-icon">📂</span>
+        <p class="drop-title">Görselleri buraya sürükleyin</p>
+        <p class="drop-subtitle">veya tıklayarak bir veya daha fazla dosya seçin</p>
+        <p class="drop-formats">Aynı anda birden fazla dosya seçebilirsiniz</p>
+      </div>
+
+      <!-- File List -->
+      <div id="fileListWrap" style="display:none; margin-top:1rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+          <span class="fs-sm fw-600 text-secondary">
+            Seçilen Dosyalar: <span id="fileCount" style="color:var(--accent-purple);">0</span>
+          </span>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="clearBatch()">
+            🗑️ Temizle
+          </button>
+        </div>
+        <ul class="file-list" id="batchFileList"></ul>
+      </div>
+
+      <!-- Info Box -->
+      <div class="alert alert-info mt-2" style="font-size:0.82rem;">
+        <span class="alert-icon">ℹ️</span>
+        <span>Tahmin işlemi Grad-CAM ısı haritası üretimini de kapsar. Çoklu görsel yüklemelerinde süre uzayabilir.</span>
+      </div>
+
+      <!-- Submit -->
+      <button type="submit" class="btn btn-primary btn-full btn-lg mt-2" id="analyzeBtn">
+        🚀 Analizi Başlat
+      </button>
+    </form>
+  </div>
+
+  <!-- How It Works -->
+  <div class="card mt-3">
+    <div class="card-header">
+      <span class="card-title">📋 Gardner Sınıflandırma Sistemi</span>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+      <div>
+        <p class="fs-xs text-muted fw-600 mb-2" style="text-transform:uppercase;letter-spacing:.05em;">Mevcut Sınıflar</p>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;">
+          <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:8px;">
+            <span style="font-weight:800;font-size:1.1rem;color:#8b5cf6;">3AA</span>
+            <span class="text-secondary fs-xs">Erken blastosist · ICM-A · TE-A</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;">
+            <span style="font-weight:800;font-size:1.1rem;color:#3b82f6;">3CC</span>
+            <span class="text-secondary fs-xs">Erken blastosist · ICM-C · TE-C</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:8px;">
+            <span style="font-weight:800;font-size:1.1rem;color:#06b6d4;">4AA</span>
+            <span class="text-secondary fs-xs">Tam blastosist · ICM-A · TE-A</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:8px;">
+            <span style="font-weight:800;font-size:1.1rem;color:#10b981;">Cleavage</span>
+            <span class="text-secondary fs-xs">Blastosist öncesi bölünme evresi</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="fs-xs text-muted fw-600 mb-2" style="text-transform:uppercase;letter-spacing:.05em;">Analiz Çıktıları</p>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:0.5rem;">
+          <li class="text-secondary fs-sm">🎯 Gardner skalası sınıf tahmini</li>
+          <li class="text-secondary fs-sm">📊 Tüm sınıfların olasılık dağılımı</li>
+          <li class="text-secondary fs-sm">🔥 Grad-CAM bölge ısı haritası</li>
+          <li class="text-secondary fs-sm">🧩 ICM / TE / Arka Plan aktivasyon skoru</li>
+          <li class="text-secondary fs-sm">⚠️ Düşük güven uyarısı (< 0.70)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Batch drop zone
+  initBatchZone('batchDropZone', 'batchFileInput', 'batchFileList', 'fileCount');
+
+  // Dosya seçilince listeyi göster
+  document.getElementById('batchFileInput').addEventListener('change', function() {
+    const wrap = document.getElementById('fileListWrap');
+    if (batchFiles.length > 0) wrap.style.display = 'block';
+    else wrap.style.display = 'none';
+  });
+
+  // BatchDropZone list visibility update
+  const originalAddFilesToBatch = window.addFilesToBatch;
+  window.addFilesToBatch = function(newFiles, input, list, count) {
+    if(originalAddFilesToBatch) {
+       originalAddFilesToBatch(newFiles, input, list, count);
+    }
+    const wrap = document.getElementById('fileListWrap');
+    if (wrap) wrap.style.display = batchFiles.length > 0 ? 'block' : 'none';
+  };
+
+  var inputId  = 'batchFileInput';
+  var listId   = 'batchFileList';
+  var countId  = 'fileCount';
+
+  function clearBatch() {
+    batchFiles = [];
+    const input = document.getElementById('batchFileInput');
+    const dt = new DataTransfer();
+    input.files = dt.files;
+    const list = document.getElementById('batchFileList');
+    if (list) list.innerHTML = '';
+    const count = document.getElementById('fileCount');
+    if (count) count.textContent = '0';
+    const wrap = document.getElementById('fileListWrap');
+    if (wrap) wrap.style.display = 'none';
+  }
+
+  // Form gönderimde loading göster
+  submitWithLoading(
+    'predictForm',
+    'Embriyo analiz ediliyor...',
+    'Tüm görseller işleniyor. Görsel sayısına göre süre değişebilir.'
+  );
+
+  // Form doğrulaması
+  document.getElementById('predictForm').addEventListener('submit', function(e) {
+    if (batchFiles.length === 0) {
+      e.preventDefault();
+      showToast('Lütfen en az bir görsel seçin.', 'warning');
+    }
+  });
+</script>
+{% endblock %}

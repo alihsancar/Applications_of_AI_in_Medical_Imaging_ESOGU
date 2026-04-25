@@ -1,6 +1,7 @@
-# DeepEmbryo: 5. Gün Embriyo Kalite Değerlendirme Sistemi
+# DeepEmbryo
+**Yapay Zeka Destekli IVF Embriyo Kalite Analiz Sistemi**
 
-> EfficientNetB3 tabanlı derin öğrenme modeli ile IVF tedavisindeki blastosist embriyolarının Gardner skalasına göre otomatik sınıflandırılması.
+EfficientNetB3 tabanlı derin öğrenme modeli ile IVF tedavisindeki blastosist embriyolarının Gardner skalasına göre otomatik sınıflandırılması.
 
 ---
 
@@ -15,74 +16,60 @@
 | **Weighted Avg** | **0.801** | |
 | **Test Accuracy** | **%80.77** | |
 
-### Accuracy - Loss Eğrisi
-<!-- accuracy_loss_curves.png dosyasını buraya ekle -->
-![Accuracy Loss](assets/accuracy_loss_curves.png)
+---
 
-### Confusion Matrix
-<!-- confusion_matrix_normalized.png dosyasını buraya ekle -->
-![Confusion Matrix](assets/confusion_matrix_normalized.png)
+##Temel Özellikler
 
-### F1-Score Per Class
-<!-- f1_per_class.png dosyasını buraya ekle -->
-![F1 Score](assets/f1_per_class.png)
+- **Tekli ve Çoklu (Batch) Analiz**
+- **Gardner Skalası Sınıflandırması:** `3AA`, `3CC`, `4AA`, `Cleavage`
+- **Açıklanabilir Yapay Zeka (Grad-CAM):** Isı haritası görselleştirme
+- **Morfolojik Bölge Skorlaması:** ICM ve TE bölge analizi
+- **Düşük Güven Uyarısı:** %70 altında manuel doğrulama uyarısı
+- **Raporlama:** CSV ve JSON formatında dışa aktarım
 
-### Grad-CAM XAI Analizi
-<!-- gradcam_results.png dosyasını buraya ekle -->
-![GradCAM](assets/gradcam_results.png)
+---
 
-### Morfolojik Özellik Raporu
-<!-- morphological_feature_report.png dosyasını buraya ekle -->
-![Morphological Report](assets/morphological_feature_report.png)
+## Kullanılan Teknolojiler
+
+- **Backend:** Python, Flask, SQLite
+- **Yapay Zeka:** PyTorch, torchvision, pytorch-grad-cam
+- **Model:** EfficientNetB3 (Transfer Learning)
+- **Frontend:** HTML5, CSS3, JavaScript ES6+
 
 ---
 
 ## Proje Yapısı
 
-```
+```text
+├── app.py                   # Flask ana uygulaması
+├── database.py              # SQLite veritabanı işlemleri
+├── main.py                  # FastAPI (API endpoint'leri)
+├── requirements.txt
 ├── assets/
-│   ├── best_model.pth          # Eğitilmiş model ağırlıkları (git'e dahil değil)
-│   └── model_info.json         # Model metadata
+│   ├── best_model.pth       # Eğitilmiş model (git'e dahil değil)
+│   └── model_info.json
 ├── model/
-│   ├── config.py               # Tüm sabitler ve hiperparametreler
-│   ├── model.py                # EfficientNetB3 tanımı ve yükleme
-│   ├── dataset.py              # Veri yükleme, augmentation, DataLoader
-│   ├── train.py                # Eğitim döngüsü, early stopping
-│   └── evaluate.py             # Metrikler, confusion matrix, grafikler
+│   ├── config.py
+│   ├── model.py
+│   ├── dataset.py
+│   ├── train.py
+│   └── evaluate.py
 ├── services/
-│   ├── inference_service.py    # Tekli/batch tahmin servisi
-│   ├── gradcam_service.py      # Grad-CAM ısı haritası servisi
-│   └── report_service.py       # CSV/JSON rapor üretimi
-└── requirements.txt
+│   ├── inference_service.py
+│   ├── gradcam_service.py
+│   └── report_service.py
+├── static/
+│   ├── css/style.css
+│   └── js/main.js
+└── templates/
+    ├── base.html
+    ├── index.html
+    ├── batch_result.html
+    ├── result.html
+    ├── history.html
+    ├── 404.html
+    └── 500.html
 ```
-
----
-
-## Model Detayları
-
-| Parametre | Değer |
-|-----------|-------|
-| Mimari | EfficientNetB3 (Transfer Learning) |
-| Ön Eğitim | ImageNet |
-| Input Boyutu | 300×300 px |
-| Optimizer | AdamW |
-| Kayıp Fonksiyonu | CrossEntropyLoss (Label Smoothing=0.1) |
-| Sınıf Ağırlıkları | [1.0, 2.0, 1.5, 1.0] |
-| Dropout | 0.6 |
-| Early Stopping | 10 epoch |
-| Unfreeze Epoch | 25 |
-| Güven Eşiği | 0.70 |
-
-### Veri Seti
-
-| Split | Oran | Görsel Sayısı |
-|-------|------|---------------|
-| Eğitim | %70 | ~119 |
-| Validasyon | %15 | ~25 |
-| Test | %15 | ~26 |
-
-**Augmentation:** Yatay/dikey flip, ±30° rotasyon, parlaklık/kontrast jitter, affine translate.  
-**Örnekleme:** WeightedRandomSampler (az örnekli sınıfları dengeler).
 
 ---
 
@@ -98,75 +85,17 @@ pip install -r requirements.txt
 
 ---
 
-## Kullanım
+## Çalıştırma
 
-### Tekli Tahmin
+```bash
+# Web arayüzü
+python app.py
+# → http://localhost:5000
 
-```python
-from services.inference_service import InferenceService
-
-service = InferenceService('assets/best_model.pth')
-result  = service.predict('embriyo.jpg')
-
-print(result['prediction'])   # '4AA'
-print(result['confidence'])   # 0.8119
-print(result['warning'])      # False
-print(result['warning_msg'])  # ''
+# API
+uvicorn main:app --reload
+# → http://127.0.0.1:8000
 ```
-
-### Grad-CAM Isı Haritası
-
-```python
-from services.gradcam_service import GradCAMService
-
-cam    = GradCAMService('assets/best_model.pth')
-result = cam.generate('embriyo.jpg')
-
-# Web için base64 PNG
-print(result['cam_image_b64'])
-
-# Bölgesel aktivasyon (ICM / TE / Arka Plan)
-print(result['region_scores'])
-```
-
-### Batch Tahmin + Rapor
-
-```python
-from services.inference_service import InferenceService
-from services.report_service import ReportService
-
-inference = InferenceService('assets/best_model.pth')
-report    = ReportService()
-
-paths = ['e1.jpg', 'e2.jpg', 'e3.jpg']
-for path in paths:
-    result = inference.predict(path)
-    result['filename'] = path
-    report.add_result(result)
-
-report.export_csv('outputs/rapor.csv')
-report.export_json('outputs/rapor.json')
-print(report.get_summary())
-```
-
----
-
-## XAI (Açıklanabilir Yapay Zeka)
-
-### Grad-CAM Görsel Kanıt
-Her tahmin için modelin embriyonun hangi bölgesine odaklandığı ısı haritasıyla gösterilir.
-
-### Uyarı Sistemi
-Softmax güven skoru **0.70'in altında** olan tahminlerde kullanıcıya uyarı verilir:
-> "Bu tahmin düşük güvenilirliktedir, lütfen manuel kontrol yapınız."
-
-### Morfolojik Özellik Raporu
-Grad-CAM aktivasyonları 3 bölgeye ayrılarak analiz edilir:
-- **ICM (Merkez):** İç hücre kütlesi — bebeğe dönüşecek bölge
-- **TE (Kenar Halkası):** Trofektoderm — plasentaya dönüşecek bölge  
-- **Arka Plan:** Blastosist dışı alan
-
-Mevcut modelde dominant bölge: **ICM (0.406)** — Gardner sınıflandırmasıyla uyumlu.
 
 ---
 
