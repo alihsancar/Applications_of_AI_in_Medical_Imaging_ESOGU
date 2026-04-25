@@ -1,95 +1,106 @@
-# DeepEmbryo 
+# DeepEmbryo
 **Yapay Zeka Destekli IVF Embriyo Kalite Analiz Sistemi**
 
-Bu proje, Tüp Bebek (IVF) tedavisi gören hastalar için kritik öneme sahip olan 5. gün (blastosist) embriyolarının kalitesini, **PyTorch** tabanlı bir Derin Öğrenme modeli (EfficientNetB3) ile objektif ve otomatik olarak değerlendiren bir **Flask** web uygulamasıdır.
-
-Embriyologlar tarafından mikroskop görüntüleri üzerinden yapılan subjektif değerlendirmelerin doğruluğunu artırmak ve Açıklanabilir Yapay Zeka (XAI) yöntemleriyle (Grad-CAM) model kararlarını şeffaflaştırmak hedeflenmiştir.
+EfficientNetB3 tabanlı derin öğrenme modeli ile IVF tedavisindeki blastosist embriyolarının Gardner skalasına göre otomatik sınıflandırılması.
 
 ---
 
-##  Temel Özellikler
+## Model Performansı
 
-- **Tekli ve Çoklu (Batch) Analiz:** İster bir, ister birden fazla embriyo görselini aynı ekrandan yükleyerek saniyeler içinde analiz edebilirsiniz.
-- **Gardner Skalası Sınıflandırması:** Embriyolar `3AA`, `3CC`, `4AA` ve `Cleavage` (bölünme evresi) sınıflarından birine yüksek doğrulukla yerleştirilir.
-- **Açıklanabilir Yapay Zeka (Grad-CAM):** Tahminlerin hangi morfolojik bölgelere dayandığını gösteren renkli ısı haritaları üretilir.
-- **Morfolojik Bölge Skorlaması:** İç Hücre Kütlesi (ICM) ve Trofektoderm (TE) bölgelerinin modele olan etkisi bölgesel olarak hesaplanıp sunulur.
-- **Düşük Güven Uyarısı:** Modelin tahmindeki güvenilirlik oranı `%70`'in altındaysa sistem embriyoloğa manuel doğrulama uyarısı verir.
-- **Veritabanı ve Raporlama:** Yapılan tüm analizler (görsellerle birlikte) SQLite veritabanına kaydedilir. İstenildiği zaman `CSV` veya `JSON` formatında dışa aktarılabilir.
+| Sınıf | F1-Score | Açıklama |
+|-------|----------|----------|
+| 3AA | 0.769 | İyi kalite, 3. gün genişleme |
+| 3CC | 0.667 | Düşük kalite — morfolojik benzerlik nedeniyle en zor sınıf |
+| 4AA | 0.800 | İyi kalite, 4. gün genişleme |
+| Cleavage | 1.000 | Erken evre embriyo |
+| **Weighted Avg** | **0.801** | |
+| **Test Accuracy** | **%80.77** | |
+
+---
+
+##Temel Özellikler
+
+- **Tekli ve Çoklu (Batch) Analiz**
+- **Gardner Skalası Sınıflandırması:** `3AA`, `3CC`, `4AA`, `Cleavage`
+- **Açıklanabilir Yapay Zeka (Grad-CAM):** Isı haritası görselleştirme
+- **Morfolojik Bölge Skorlaması:** ICM ve TE bölge analizi
+- **Düşük Güven Uyarısı:** %70 altında manuel doğrulama uyarısı
+- **Raporlama:** CSV ve JSON formatında dışa aktarım
 
 ---
 
 ## Kullanılan Teknolojiler
 
 - **Backend:** Python, Flask, SQLite
-- **Yapay Zeka & Görüntü İşleme:** PyTorch, torchvision, OpenCV, PIL, pytorch-grad-cam
-- **Model Mimarisi:** EfficientNetB3
-- **Frontend:** HTML5, CSS3 (Vanilla - Dark Glassmorphism Tema), JavaScript (ES6+)
+- **Yapay Zeka:** PyTorch, torchvision, pytorch-grad-cam
+- **Model:** EfficientNetB3 (Transfer Learning)
+- **Frontend:** HTML5, CSS3, JavaScript ES6+
 
 ---
 
 ## Proje Yapısı
 
 ```text
-├── app.py                   # Flask ana uygulaması ve rotalar (predict, history, export vs.)
-├── database.py              # SQLite veritabanı işlemleri (CRUD)
-├── requirements.txt         # Proje bağımlılıkları listesi
+├── app.py                   # Flask ana uygulaması
+├── database.py              # SQLite veritabanı işlemleri
+├── main.py                  # FastAPI (API endpoint'leri)
+├── requirements.txt
 ├── assets/
-│   ├── best_model.pth       # Eğitilmiş PyTorch model ağırlıkları (Kullanıcı ekler)
-│   └── model_info.json      # Model ve sınıflara ait konfigürasyon detayları
-├── model/                   # PyTorch model tanımları ve eğitim kodları
+│   ├── best_model.pth       # Eğitilmiş model (git'e dahil değil)
+│   └── model_info.json
+├── model/
 │   ├── config.py
 │   ├── model.py
-│   └── train.py
-├── services/                # İş mantığı servisleri
-│   ├── gradcam_service.py   # Grad-CAM ısı haritası ve bölge aktivasyonu üreten servis
-│   ├── inference_service.py # Görüntü ön işleme ve model tahmin servisi
-│   └── report_service.py    # Çoklu sonuçların özet istatistiklerini hesaplayan servis
+│   ├── dataset.py
+│   ├── train.py
+│   └── evaluate.py
+├── services/
+│   ├── inference_service.py
+│   ├── gradcam_service.py
+│   └── report_service.py
 ├── static/
-│   ├── css/style.css        # Uygulamanın modern karanlık teması
-│   └── js/main.js           # Drag & Drop, yükleme ekranı ve dinamik UI etkileşimleri
-└── templates/               # Flask HTML şablonları
-    ├── base.html            # Ana iskelet ve navigasyon
-    ├── index.html           # Ana sayfa, birleşik çoklu/tekli yükleme alanı
-    ├── batch_result.html    # Çoklu yükleme sonucunda oluşan grid tasarımlı sonuç listesi
-    ├── result.html          # Geçmişten erişilen tekli detay sayfası
-    ├── history.html         # Veritabanı geçmiş listesi ve raporlama işlemleri
-    ├── 404.html             # Sayfa bulunamadı hatası
-    └── 500.html             # Sunucu hatası
+│   ├── css/style.css
+│   └── js/main.js
+└── templates/
+    ├── base.html
+    ├── index.html
+    ├── batch_result.html
+    ├── result.html
+    ├── history.html
+    ├── 404.html
+    └── 500.html
 ```
 
 ---
 
-## Kurulum ve Çalıştırma
+## Kurulum
 
-### Gereksinimler
-- Python 3.8 veya üzeri
-- Eğitilmiş model dosyası (`assets/best_model.pth`) projede bulunmalıdır.
+```bash
+pip install -r requirements.txt
+```
 
-### Adımlar
+`best_model.pth` dosyasını `assets/` klasörüne ekle.
 
-1. **Bağımlılıkları Yükleyin:**
-   Terminal üzerinden proje klasörüne gidin ve gerekli kütüphaneleri yükleyin:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. **Uygulamayı Başlatın:**
-   Flask uygulamasını çalıştırın:
-   ```bash
-   python app.py
-   ```
-
-3. **Arayüze Erişin:**
-   Tarayıcınızı açın ve aşağıdaki adrese gidin:
-   ```text
-   http://localhost:5000
-   ```
+> **Model dosyasını indir:** [best_model.pth (41MB)](https://drive.google.com/file/d/15iAFTBtFB0FYFVkSjZleNtESMTi4kQtM/view?usp=sharing)
 
 ---
 
-## Kullanım Senaryoları
+## Çalıştırma
 
-1. **Yeni Analiz:** `http://localhost:5000/` adresinde açılan ekrana embriyo görselini (veya birden fazla görseli) sürükleyip bırakın ve "Analizi Başlat" butonuna tıklayın.
-2. **Sonuçları İnceleme:** İşlem bittiğinde orijinal görsel ile yan yana Grad-CAM ısı haritasını göreceksiniz. Güven skoru, sınıf olasılıkları ve bölgesel analizler kart üzerinde yer alır.
-3. **Geçmiş Görüntüleme:** Menüden `Geçmiş` sekmesine geçerek daha önceki tahminlerinizi filtreleyebilir, tekil detaylarına bakabilir veya kayıtları silebilirsiniz.
-4. **Dışa Aktarma:** Geçmiş sayfasından "CSV İndir" veya "JSON İndir" butonları ile tüm tahmin verilerini raporlayabilirsiniz.
+```bash
+# Web arayüzü
+python app.py
+# → http://localhost:5000
+
+# API
+uvicorn main:app --reload
+# → http://127.0.0.1:8000
+```
+
+---
+
+## Referanslar
+
+- Gardner & Schoolcraft (1999). *Culture and transfer of human blastocysts.*
+- Tan et al. (2019). *EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks.*
+- Selvaraju et al. (2017). *Grad-CAM: Visual Explanations from Deep Networks.*
