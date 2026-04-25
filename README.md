@@ -1,4 +1,4 @@
-# DeepEmbryo 🧬
+# DeepEmbryo 
 **Yapay Zeka Destekli IVF Embriyo Kalite Analiz Sistemi**
 
 Bu proje, Tüp Bebek (IVF) tedavisi gören hastalar için kritik öneme sahip olan 5. gün (blastosist) embriyolarının kalitesini, **PyTorch** tabanlı bir Derin Öğrenme modeli (EfficientNetB3) ile objektif ve otomatik olarak değerlendiren bir **Flask** web uygulamasıdır.
@@ -7,18 +7,18 @@ Embriyologlar tarafından mikroskop görüntüleri üzerinden yapılan subjektif
 
 ---
 
-## 🌟 Temel Özellikler
+##  Temel Özellikler
 
 - **Tekli ve Çoklu (Batch) Analiz:** İster bir, ister birden fazla embriyo görselini aynı ekrandan yükleyerek saniyeler içinde analiz edebilirsiniz.
 - **Gardner Skalası Sınıflandırması:** Embriyolar `3AA`, `3CC`, `4AA` ve `Cleavage` (bölünme evresi) sınıflarından birine yüksek doğrulukla yerleştirilir.
 - **Açıklanabilir Yapay Zeka (Grad-CAM):** Tahminlerin hangi morfolojik bölgelere dayandığını gösteren renkli ısı haritaları üretilir.
 - **Morfolojik Bölge Skorlaması:** İç Hücre Kütlesi (ICM) ve Trofektoderm (TE) bölgelerinin modele olan etkisi bölgesel olarak hesaplanıp sunulur.
-- **Düşük Güven Uyarısı:** Modelin tahmindeki güvenilirlik oranı `%70`'in altındaysa sistem embriyoloğa manuel doğrulama uyarısı (⚠️) verir.
+- **Düşük Güven Uyarısı:** Modelin tahmindeki güvenilirlik oranı `%70`'in altındaysa sistem embriyoloğa manuel doğrulama uyarısı verir.
 - **Veritabanı ve Raporlama:** Yapılan tüm analizler (görsellerle birlikte) SQLite veritabanına kaydedilir. İstenildiği zaman `CSV` veya `JSON` formatında dışa aktarılabilir.
 
 ---
 
-## 🛠️ Kullanılan Teknolojiler
+## Kullanılan Teknolojiler
 
 - **Backend:** Python, Flask, SQLite
 - **Yapay Zeka & Görüntü İşleme:** PyTorch, torchvision, OpenCV, PIL, pytorch-grad-cam
@@ -27,7 +27,7 @@ Embriyologlar tarafından mikroskop görüntüleri üzerinden yapılan subjektif
 
 ---
 
-## 📂 Proje Yapısı
+## Proje Yapısı
 
 ```text
 ├── app.py                   # Flask ana uygulaması ve rotalar (predict, history, export vs.)
@@ -59,7 +59,7 @@ Embriyologlar tarafından mikroskop görüntüleri üzerinden yapılan subjektif
 
 ---
 
-## 🚀 Kurulum ve Çalıştırma
+## Kurulum ve Çalıştırma
 
 ### Gereksinimler
 - Python 3.8 veya üzeri
@@ -87,7 +87,7 @@ Embriyologlar tarafından mikroskop görüntüleri üzerinden yapılan subjektif
 
 ---
 
-## 📸 Kullanım Senaryoları
+## Kullanım Senaryoları
 
 1. **Yeni Analiz:** `http://localhost:5000/` adresinde açılan ekrana embriyo görselini (veya birden fazla görseli) sürükleyip bırakın ve "Analizi Başlat" butonuna tıklayın.
 2. **Sonuçları İnceleme:** İşlem bittiğinde orijinal görsel ile yan yana Grad-CAM ısı haritasını göreceksiniz. Güven skoru, sınıf olasılıkları ve bölgesel analizler kart üzerinde yer alır.
