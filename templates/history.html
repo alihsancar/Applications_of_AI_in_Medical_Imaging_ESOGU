@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Geçmiş Tahminler{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h2>🕒 Geçmiş Tahminler</h2>
+      <p>Veritabanındaki tüm analiz kayıtları (en fazla 200 kayıt)</p>
+    </div>
+    <div class="flex gap-1" style="flex-wrap:wrap;">
+      <a href="{{ url_for('export_csv') }}"  class="btn btn-success btn-sm" id="exportCsvBtn">⬇️ CSV İndir</a>
+      <a href="{{ url_for('export_json') }}" class="btn btn-secondary btn-sm" id="exportJsonBtn">⬇️ JSON İndir</a>
+      <a href="{{ url_for('index') }}"       class="btn btn-primary btn-sm">🧬 Yeni Analiz</a>
+    </div>
+  </div>
+
+  {% if records %}
+
+  <!-- Quick Stats -->
+  <div class="stats-row" style="margin-bottom:1.5rem;">
+    <div class="stat-card">
+      <div class="stat-value">{{ records|length }}</div>
+      <div class="stat-label">Toplam Kayıt</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">
+        {{ records | selectattr('warning', 'equalto', 1) | list | length }}
+      </div>
+      <div class="stat-label">Düşük Güven</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">
+        {{ records | selectattr('mode', 'equalto', 'single') | list | length }}
+      </div>
+      <div class="stat-label">Tekli Analiz</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">
+        {{ records | selectattr('mode', 'equalto', 'batch') | list | length }}
+      </div>
+      <div class="stat-label">Toplu İşlem</div>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="card" style="padding:1rem 1.25rem;margin-bottom:1.25rem;">
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+      <span class="fs-sm fw-600 text-secondary">🔍 Filtrele:</span>
+      <input type="text" id="searchInput" placeholder="Dosya adı veya sınıf ara..."
+             oninput="filterTable()"
+             style="flex:1;min-width:180px;padding:0.5rem 0.85rem;
+                    background:rgba(0,0,0,0.3);border:1px solid var(--border);
+                    border-radius:var(--radius-sm);color:var(--text-primary);
+                    font-size:0.875rem;outline:none;font-family:inherit;"
+             aria-label="Tablo arama filtresi">
+      <select id="classFilter" onchange="filterTable()"
+              style="padding:0.5rem 0.85rem;background:rgba(0,0,0,0.3);
+                     border:1px solid var(--border);border-radius:var(--radius-sm);
+                     color:var(--text-primary);font-size:0.875rem;outline:none;
+                     font-family:inherit;" aria-label="Sınıf filtresi">
+        <option value="">Tüm Sınıflar</option>
+        <option value="3AA">3AA</option>
+        <option value="3CC">3CC</option>
+        <option value="4AA">4AA</option>
+        <option value="Cleavage">Cleavage</option>
+      </select>
+      <select id="modeFilter" onchange="filterTable()"
+              style="padding:0.5rem 0.85rem;background:rgba(0,0,0,0.3);
+                     border:1px solid var(--border);border-radius:var(--radius-sm);
+                     color:var(--text-primary);font-size:0.875rem;outline:none;
+                     font-family:inherit;" aria-label="Mod filtresi">
+        <option value="">Tüm Modlar</option>
+        <option value="single">Tekli</option>
+        <option value="batch">Toplu</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="clearFilters()">✕ Temizle</button>
+    </div>
+  </div>
+
+  <!-- History Table -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">📋 Analiz Geçmişi</span>
+      <span class="text-muted fs-xs" id="visibleCount">{{ records|length }} kayıt</span>
+    </div>
+
+    <div class="table-wrap">
+      <table id="historyTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Tarih / Saat</th>
+            <th>Dosya Adı</th>
+            <th>Tahmin</th>
+            <th>Güven</th>
+            <th>Mod</th>
+            <th>Durum</th>
+            <th>İşlemler</th>
+          </tr>
+        </thead>
+        <tbody id="historyTableBody">
+          {% for r in records %}
+          <tr data-filename="{{ r.filename | lower }}"
+              data-prediction="{{ r.prediction | lower }}"
+              data-mode="{{ r.mode }}">
+            <td class="text-muted fs-xs">#{{ r.id }}</td>
+            <td class="fs-xs text-secondary" style="white-space:nowrap;">{{ r.timestamp }}</td>
+            <td>
+              <span class="fs-sm" style="color:var(--text-primary);
+                    max-width:180px;display:block;overflow:hidden;
+                    text-overflow:ellipsis;white-space:nowrap;"
+                    title="{{ r.filename }}">
+                🔬 {{ r.filename }}
+              </span>
+            </td>
+            <td>
+              <span class="pred-tag">{{ r.prediction }}</span>
+            </td>
+            <td>
+              <span class="fw-600 fs-sm
+                {{ 'text-success' if not r.warning else 'text-warning' }}">
+                {{ "%.1f"|format(r.confidence * 100) }}%
+              </span>
+            </td>
+            <td>
+              {% if r.mode == 'batch' %}
+                <span class="badge badge-blue">📂 Toplu</span>
+              {% else %}
+                <span class="badge badge-purple">🧬 Tekli</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if r.warning %}
+                <span class="badge badge-warning">⚠️ Düşük</span>
+              {% else %}
+                <span class="badge badge-success">✅ Yüksek</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="flex gap-1">
+                <a href="{{ url_for('result', pred_id=r.id) }}"
+                   class="btn btn-secondary btn-sm">🔍</a>
+                <form method="POST"
+                      action="{{ url_for('delete_record', pred_id=r.id) }}"
+                      id="delForm{{ r.id }}" style="display:inline;">
+                  <button type="button"
+                          class="btn btn-danger btn-sm"
+                          onclick="confirmDelete('delForm{{ r.id }}')"
+                          title="Sil">🗑️</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% else %}
+  <!-- Empty State -->
+  <div class="card text-center" style="padding:4rem 2rem;">
+    <span style="font-size:4rem;display:block;margin-bottom:1.25rem;">🔬</span>
+    <h3 style="font-size:1.25rem;margin-bottom:0.75rem;">Henüz analiz yapılmadı</h3>
+    <p class="text-secondary" style="margin-bottom:1.5rem;">
+      Embriyo görseli yükleyerek ilk analizinizi gerçekleştirin.
+    </p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">🚀 İlk Analizi Başlat</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Tablo filtreleme
+  function filterTable() {
+    const search    = document.getElementById('searchInput').value.toLowerCase();
+    const cls       = document.getElementById('classFilter').value.toLowerCase();
+    const mode      = document.getElementById('modeFilter').value.toLowerCase();
+    const rows      = document.querySelectorAll('#historyTableBody tr');
+    let visible = 0;
+
+    rows.forEach(row => {
+      const filename   = row.dataset.filename   || '';
+      const prediction = row.dataset.prediction || '';
+      const rowMode    = row.dataset.mode        || '';
+
+      const matchSearch = !search || filename.includes(search) || prediction.includes(search);
+      const matchCls    = !cls    || prediction.includes(cls);
+      const matchMode   = !mode   || rowMode === mode;
+
+      if (matchSearch && matchCls && matchMode) {
+        row.style.display = '';
+        visible++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+
+    const countEl = document.getElementById('visibleCount');
+    if (countEl) countEl.textContent = visible + ' kayıt';
+  }
+
+  function clearFilters() {
+    document.getElementById('searchInput').value  = '';
+    document.getElementById('classFilter').value  = '';
+    document.getElementById('modeFilter').value   = '';
+    filterTable();
+  }
+</script>
+{% endblock %}

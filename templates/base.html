@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="DeepEmbryo — Yapay zeka destekli IVF embriyo kalite analiz sistemi. Gardner skalasına göre otomatik sınıflandırma.">
+  <title>{% block title %}DeepEmbryo{% endblock %} — IVF Embriyo Analiz Sistemi</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+
+<body>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <p class="loading-text">Analiz yapılıyor...</p>
+    <p class="loading-sub">Lütfen bekleyin.</p>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="navbar" role="navigation" aria-label="Ana navigasyon">
+    <a href="{{ url_for('index') }}" class="navbar-brand" id="navBrand">
+      <div class="brand-icon">🔬</div>
+      <span>DeepEmbryo</span>
+    </a>
+    <ul class="navbar-nav" role="list">
+      <li><a href="{{ url_for('index') }}" class="nav-link" id="navSingle">🧬 Yeni Analiz</a></li>
+      <li><a href="{{ url_for('history') }}" class="nav-link" id="navHistory">🕒 Geçmiş</a></li>
+    </ul>
+  </nav>
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-container">
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }}" data-auto-dismiss="1" role="alert">
+      <span class="alert-icon">
+        {% if category == 'error' %}❌{% elif category == 'success' %}✅{% elif category == 'warning' %}⚠️{% else %}ℹ️{%
+        endif %}
+      </span>
+      {{ message }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <!-- Page Content -->
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <p>DeepEmbryo &copy; 2026 — Yapay Zeka Destekli IVF Embriyo Kalite Analiz Sistemi &nbsp;|&nbsp; <span>ESOGU</span>
+    </p>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+
+</html>

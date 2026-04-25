@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Tahmin Sonucu #{{ record.id }}{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h2>🔬 Analiz Sonucu</h2>
+      <p>{{ record.filename }} · {{ record.timestamp }}</p>
+    </div>
+    <div class="flex gap-1">
+      <a href="{{ url_for('index') }}" class="btn btn-secondary">← Yeni Analiz</a>
+      <a href="{{ url_for('history') }}" class="btn btn-secondary">🕒 Geçmiş</a>
+    </div>
+  </div>
+
+  <!-- Warning Banner -->
+  {% if record.warning %}
+  <div class="alert alert-warning" role="alert">
+    <span class="alert-icon">⚠️</span>
+    <div>
+      <strong>Düşük Güvenilirlik Uyarısı</strong><br>
+      Bu tahmin düşük güvenilirliktedir, lütfen manuel kontrol yapınız.
+      (Güven skoru: <strong>{{ "%.1f"|format(record.confidence * 100) }}%</strong> · Eşik: 70%)
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Main Result Row -->
+  <div style="display:grid; grid-template-columns: 1fr 340px; gap:1.5rem; align-items:start;">
+
+    <!-- Left: Images -->
+    <div>
+      <div class="result-grid">
+        <!-- Original -->
+        <div>
+          <div class="result-image-box">
+            {% if record.original_b64 %}
+              <img src="data:image/png;base64,{{ record.original_b64 }}"
+                   alt="Orijinal embriyo görseli" id="originalImg">
+            {% else %}
+              <div class="flex-center" style="flex-direction:column;gap:.5rem;color:var(--text-muted);">
+                <span style="font-size:3rem;">🔬</span>
+                <span class="fs-sm">Görsel mevcut değil</span>
+              </div>
+            {% endif %}
+          </div>
+          <p class="result-image-label">📷 Orijinal Görsel</p>
+        </div>
+
+        <!-- Grad-CAM -->
+        <div>
+          <div class="result-image-box">
+            {% if record.cam_image_b64 %}
+              <img src="data:image/png;base64,{{ record.cam_image_b64 }}"
+                   alt="Grad-CAM ısı haritası" id="gradcamImg">
+            {% else %}
+              <div class="flex-center" style="flex-direction:column;gap:.5rem;color:var(--text-muted);">
+                <span style="font-size:3rem;">🔥</span>
+                <span class="fs-sm">Isı haritası mevcut değil</span>
+              </div>
+            {% endif %}
+          </div>
+          <p class="result-image-label">🔥 Grad-CAM Isı Haritası</p>
+        </div>
+      </div>
+
+      <!-- Grad-CAM Açıklaması -->
+      <div class="card" style="padding:1rem 1.25rem;">
+        <p class="fs-sm text-secondary" style="line-height:1.6;">
+          <strong style="color:var(--text-primary);">Grad-CAM Yorumu:</strong>
+          Model, embriyoyu <strong style="color:var(--accent-purple);">{{ record.prediction }}</strong> olarak sınıflandırdı.
+          Karar verirken en çok
+          {% if record.region_scores and record.region_scores.dominant %}
+            <strong style="color:var(--accent-purple);">{{ record.region_scores.dominant }}</strong>
+          {% else %}
+            merkezi bölgeye
+          {% endif %}
+          odaklandı. Isı haritasında kırmızı/sarı bölgeler modelin en fazla aktivasyon gösterdiği alanlardır.
+        </p>
+      </div>
+    </div>
+
+    <!-- Right: Result Panel -->
+    <div style="display:flex;flex-direction:column;gap:1.25rem;">
+
+      <!-- Prediction Badge -->
+      <div class="card text-center">
+        <p class="fs-xs text-muted fw-600" style="text-transform:uppercase;letter-spacing:.05em;margin-bottom:.75rem;">Tahmin Edilen Sınıf</p>
+        <div class="flex-center mb-2">
+          <div class="prediction-badge">
+            🧬 {{ record.prediction }}
+          </div>
+        </div>
+        <div class="confidence-ring-wrap flex-center" style="flex-direction:column;gap:.25rem;">
+          <div class="confidence-value">{{ "%.1f"|format(record.confidence * 100) }}%</div>
+          <div class="confidence-label">Güven Skoru</div>
+        </div>
+        {% if record.warning %}
+          <div class="badge badge-warning mt-2" style="justify-content:center;width:100%;">⚠️ Düşük Güvenilirlik</div>
+        {% else %}
+          <div class="badge badge-success mt-2" style="justify-content:center;width:100%;">✅ Yüksek Güvenilirlik</div>
+        {% endif %}
+      </div>
+
+      <!-- Probability Bars -->
+      <div class="card">
+        <p class="fs-xs text-muted fw-600 mb-2" style="text-transform:uppercase;letter-spacing:.05em;">Sınıf Olasılıkları</p>
+        <div class="confidence-bar-wrap">
+          {% if record.probabilities %}
+            {% for cls, prob in record.probabilities.items() | sort(attribute='1', reverse=True) %}
+            <div class="prob-item">
+              <span class="prob-label {{ 'text-purple fw-bold' if cls == record.prediction else '' }}">{{ cls }}</span>
+              <div class="prob-bar-bg">
+                <div class="prob-bar-fill {{ '' if cls == record.prediction else 'low' }}"
+                     data-width="{{ (prob * 100)|round(1) }}"
+                     style="width:0%"></div>
+              </div>
+              <span class="prob-value">{{ "%.1f"|format(prob * 100) }}%</span>
+            </div>
+            {% endfor %}
+          {% else %}
+            <p class="text-muted fs-sm">Olasılık verisi mevcut değil.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Region Scores -->
+      <div class="card">
+        <p class="fs-xs text-muted fw-600 mb-2" style="text-transform:uppercase;letter-spacing:.05em;">Morfolojik Bölge Aktivasyonu</p>
+        {% if record.region_scores %}
+          <div class="region-grid" style="grid-template-columns:1fr 1fr 1fr;">
+            {% set dominant = record.region_scores.get('dominant', '') %}
+            {% for key, val in record.region_scores.items() if key != 'dominant' %}
+            <div class="region-card {{ 'dominant' if key == dominant else '' }}">
+              <div class="region-name">{{ key.split('(')[0].strip() }}</div>
+              <div class="region-score">{{ "%.2f"|format(val) }}</div>
+              {% if key == dominant %}
+                <div class="region-dom">⭐ Baskın</div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          <p class="fs-xs text-muted mt-2" style="line-height:1.5;">
+            Aktivasyon skoru 0-1 arasındadır. Yüksek değer, modelin o bölgeye daha fazla odaklandığını gösterir.
+          </p>
+        {% else %}
+          <p class="text-muted fs-sm">Bölge skoru mevcut değil.</p>
+        {% endif %}
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;flex-direction:column;gap:0.5rem;">
+        <form method="POST" action="{{ url_for('delete_record', pred_id=record.id) }}" id="deleteForm{{ record.id }}">
+          <button type="button" class="btn btn-danger btn-full btn-sm"
+                  onclick="confirmDelete('deleteForm{{ record.id }}')">
+            🗑️ Bu Kaydı Sil
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Olasılık barlarını animasyonlu yükle
+  animateProbBars();
+</script>
+{% endblock %}
