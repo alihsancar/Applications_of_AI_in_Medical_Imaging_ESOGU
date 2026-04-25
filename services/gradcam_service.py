@@ -34,11 +34,20 @@ class GradCAMService:
     """
 
     def __init__(self, model_path: str):
-        self.model       = load_trained_model(model_path)
-        self.class_names = CLASS_NAMES
+        self.model = load_trained_model(model_path)
+
+        # Grad-CAM için gradient hesaplaması açık olmalı
+        for param in self.model.parameters():
+            param.requires_grad = True
+        self.model.eval()
+
+        self.class_names  = CLASS_NAMES
         # EfficientNetB3'ün son conv bloğu hedef katman
         self.target_layer = [self.model.features[-1]]
-        self.cam = GradCAM(model=self.model, target_layers=self.target_layer)
+        self.cam = GradCAM(
+            model=self.model,
+            target_layers=self.target_layer
+        )
 
     def generate(self, image_input, target_class: str = None) -> dict:
         """
@@ -67,10 +76,10 @@ class GradCAMService:
         pil_img = pil_img.resize((IMG_SIZE, IMG_SIZE))
         tensor  = _transform(pil_img).unsqueeze(0).to(DEVICE)
 
-        # Model tahmini
-        with torch.no_grad():
-            output = self.model(tensor)
-            probs  = torch.softmax(output, dim=1)[0]
+        # Model tahmini (gradient akışı açık)
+        self.model.eval()
+        output = self.model(tensor)
+        probs  = torch.softmax(output, dim=1)[0]
 
         pred_idx   = probs.argmax().item()
         confidence = probs[pred_idx].item()
@@ -82,11 +91,11 @@ class GradCAMService:
             target_idx = pred_idx
 
         # Grad-CAM hesapla
-        targets      = [ClassifierOutputTarget(target_idx)]
+        targets       = [ClassifierOutputTarget(target_idx)]
         grayscale_cam = self.cam(input_tensor=tensor, targets=targets)[0]
 
         # Görseli denormalize et
-        img_np = tensor[0].cpu().numpy().transpose(1, 2, 0)
+        img_np = tensor[0].cpu().detach().numpy().transpose(1, 2, 0)
         img_np = img_np * np.array(IMAGENET_STD) + np.array(IMAGENET_MEAN)
         img_np = np.clip(img_np, 0, 1).astype(np.float32)
 
@@ -113,10 +122,10 @@ class GradCAMService:
           - TE (Kenar Halkası): Trofektoderm
           - Arka Plan: Blastosist dışı
         """
-        h, w  = grayscale_cam.shape
+        h, w   = grayscale_cam.shape
         cy, cx = h // 2, w // 2
-        r_icm = min(h, w) // 5
-        r_te  = min(h, w) // 2
+        r_icm  = min(h, w) // 5
+        r_te   = min(h, w) // 2
 
         Y, X = np.ogrid[:h, :w]
         dist  = np.sqrt((X - cx)**2 + (Y - cy)**2)
@@ -126,9 +135,9 @@ class GradCAMService:
         mask_bg  = dist >= r_te
 
         scores = {
-            'ICM (Merkez)'     : round(float(grayscale_cam[mask_icm].mean()), 4),
+            'ICM (Merkez)'      : round(float(grayscale_cam[mask_icm].mean()), 4),
             'TE (Kenar Halkası)': round(float(grayscale_cam[mask_te].mean()),  4),
-            'Arka Plan'        : round(float(grayscale_cam[mask_bg].mean()),   4)
+            'Arka Plan'         : round(float(grayscale_cam[mask_bg].mean()),  4)
         }
         scores['dominant'] = max(
             {k: v for k, v in scores.items() if k != 'dominant'},
